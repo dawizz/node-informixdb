@@ -1,4 +1,4 @@
-var common = require("./common"), 
+var common = require("./common"),
 	odbc = require("../"),
 	maxConnections = 5,
 	connections = [],
@@ -8,15 +8,16 @@ var common = require("./common"),
 	initialMemHeap = 0,
 	maxDiff = 1000000,
 	closedConnectionCount = 0;
+	let db;
 	try
 	{
 		global.gc();
 		initialMemHeap = util.inspect(process.memoryUsage().heapUsed);
-		for (var i = 0; i < maxConnections; i++)
+		for (let i = 0; i < maxConnections; i++)
 		{ (function (i) {
-			var db = new odbc.Database();
+			db = new odbc.Database();
 			connections.push(db);
-			
+
 			db.open(common.connectionString, function(err) {
 				runQueries(db, "T1Leak" + i);
 			});
@@ -26,11 +27,11 @@ var common = require("./common"),
 	catch(e)
 	{
 		console.log(e);
-		db.close(function () {
+		if (db) db.close(function () {
 					console.log("Connection closed on error");
 					});
 	}
-	
+
 	function runQueries(db, tableName)
 	{
 		db.query("create table "+ tableName + " (PID INTEGER, C1 VARCHAR(255), C2 VARCHAR(255), C3 VARCHAR(255))", function(err, data){
@@ -38,21 +39,21 @@ var common = require("./common"),
 			{
 				console.log("Table "+ tableName + " created");
 			}
-					
+
 			else
 			{
-				console.log(err);	
+				console.log(err);
 			}
 		});
-				
+
 		db.query("INSERT into " + tableName + " values (1, 'PersonA', 'LastNameA', 'QA')", icback);
 		db.query("INSERT into " + tableName + " values (2, 'PersonB', 'LastNameB', 'Dev')", icback);
 		db.query("INSERT into " + tableName + " values (3, 'PersonC', 'LastNameC', 'QA')", icback);
 		db.query("INSERT into " + tableName + " values (4, 'PersonD', 'LastNameD', 'QA')", icback);
 		db.query("INSERT into " + tableName + " values (5, 'PersonE', 'LastNameE', 'QA')", icback);
-		
+
 		db.query("SELECT * from " + tableName, scback);
-		
+
 		db.query("UPDATE " + tableName + " SET C3 = 'QA Intern' where C2 = 'LastNameD'", ucback);
 		db.query("SELECT * from " + tableName + " where C3 = 'QA Intern'", scback);
 		db.query("SELECT count(*) from " + tableName + " where PID = 7", scback);
@@ -66,34 +67,34 @@ var common = require("./common"),
 	{
 		if (err == null)
 		{
-		}		
+		}
 		else
 		{
-			console.log(err);	
+			console.log(err);
 		}
 	}
-			
+
 	function scback(err, data)
 	{
 		if (err == null)
 		{
 			console.log("Select statement successful");
-		}	
+		}
 		else
 		{
-			console.log(err);	
+			console.log(err);
 		}
 	}
-	
+
 	function ucback(err, data)
 	{
 		if (err == null)
 		{
 			console.log("Update statement successful");
-		}	
+		}
 		else
 		{
-			console.log(err);	
+			console.log(err);
 		}
 	}
 
@@ -102,10 +103,10 @@ var common = require("./common"),
 		if (err == null)
 		{
 			console.log("Delete row(s) successful");
-		}	
+		}
 		else
 		{
-			console.log(err);	
+			console.log(err);
 		}
 	}
 
@@ -114,14 +115,14 @@ var common = require("./common"),
 		if (err == null)
 		{
 			console.log("Drop table " + this.tableName + " successful");
-		}		
+		}
 		else
 		{
-			console.log(err);	
+			console.log(err);
 		}
 
 		dropCallback++;
-		if(dropCallback == maxConnections)
+		if(dropCallback === maxConnections)
 		{
 			closedbConnections();
 		}
@@ -133,7 +134,7 @@ var common = require("./common"),
 			db.close(function () {
 				console.log("Database Connection " + ix + " Closed");
 				closedConnectionCount++
-				if(closedConnectionCount == maxConnections)
+				if(closedConnectionCount === maxConnections)
 				{
 					checkMemory();
 				}
@@ -143,7 +144,7 @@ var common = require("./common"),
 	function checkMemory()
 	{
 		global.gc();
-		diffHeapUse =  util.inspect(process.memoryUsage().heapUsed) - initialMemHeap;
+		let diffHeapUse = util.inspect(process.memoryUsage().heapUsed) - initialMemHeap;
 		console.log("DIFFERENCE ", diffHeapUse);
 		assert(diffHeapUse < maxDiff);
 	}

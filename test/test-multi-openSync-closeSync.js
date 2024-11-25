@@ -5,7 +5,7 @@ var common = require("./common")
 	, openCount = 10
 	, connections = []
 	, errorCount = 0;
-	;
+
 
 for (var x = 0; x < openCount; x++ ) {
   var db = new odbc.Database();

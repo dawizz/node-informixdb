@@ -11,10 +11,10 @@ var request =  function (err, conn) {
   }
   try {
       conn.querySync("drop table mytab4");
-  } catch(e) {};
+  } catch(e) {}
   conn.beginTransaction(function (err) {
     if (err) {
-      //could not begin a transaction for some reason. 
+      //could not begin a transaction for some reason.
       console.log(err);
       return conn.closeSync();
     }

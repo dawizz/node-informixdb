@@ -27,29 +27,32 @@ informixdb.open(cn, {"fetchMode": 3}, function(err, conn) { // 3 means FETCH_ARR
     }
     //Bind and Execute the statment asynchronously
     stmt.executeNonQuery([42, 'bimal'], function (err, ret) {
-      if( err ) console.log(err);  
+      if( err ) console.log(err);
       //else ret.closeSync(); // call closeSync() for execute().
       else console.log("Inserted row count = " + ret);
       assert.equal(ret, 1);
-      
+
       conn.prepare("select * from mytab1", function (err, stmt) {
         if(err) {
           console.log(err);
           return conn.closeSync();
         }
         stmt.execute([], function(err, result) {
-          if(err) console.log(err);
+          let data;
+          if (err) console.log(err);
           else {
             data = result.fetchAllSync(); // Use fetchAllSync({fetchMode:3}) to get data as array.
-            console.log("Fetched Data = " );
+            console.log("Fetched Data = ");
             console.log(data);
             result.closeSync();
             conn.querySync("drop table mytab1");
-            assert.deepEqual(data, [ { c1: 42, c2: 'bimal' } ]);
-            conn.close(function () { console.log('done'); });
+            assert.deepEqual(data, [{c1: 42, c2: 'bimal'}]);
+            conn.close(function () {
+              console.log('done');
+            });
           }
         });
-      });  
+      });
     });
   });
 });

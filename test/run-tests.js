@@ -37,10 +37,10 @@ doNextConnectionString();
 
 
 function doTest(file, connectionString) {
-  var test = spawn("node", ['--expose_gc',file, connectionString.connectionString])
-    , timer = null
-    , timedOut = false;
-    ;
+  var test = spawn("node", ['--expose_gc', file, connectionString.connectionString])
+  ;let timer = null;
+  var timedOut = false;
+
   var testOut = '', testErr = '';
 
   test.stdout.on('data', function(data) {
@@ -82,15 +82,15 @@ function doTest(file, connectionString) {
     doNextTest(connectionString);
   });
 
-  var timer = setTimeout(function () {
+  timer = setTimeout(function () {
     timedOut = true;
     test.kill();
-  },testTimeout);
+  }, testTimeout);
 }
 
 function doNextTest(connectionString) {
   if (files.length) {
-    var testFile = files.shift();
+    const testFile = files.shift();
 
     doTest(testFile, connectionString);
   }

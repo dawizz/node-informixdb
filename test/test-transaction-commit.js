@@ -10,7 +10,7 @@ db.openSync(common.connectionString);
 
 common.createTables(db, function (err, data) {
   test1()
-  
+
   function test1() {
     db.beginTransaction(function (err) {
       if (err) {
@@ -18,7 +18,7 @@ common.createTables(db, function (err, data) {
         console.log(err);
         exitCode = 1
       }
-      
+
       var result = db.querySync("insert into " + common.tableName + " (COLINT, COLDATETIME, COLTEXT) VALUES (42, null, null)" );
 
       //rollback
@@ -28,16 +28,16 @@ common.createTables(db, function (err, data) {
           console.log(err);
           exitCode = 2
         }
-        
+
         data = db.querySync("select * from " + common.tableName);
-        
+
         assert.deepEqual(data, []);
-        
+
         test2();
       });
     });
   }
-  
+
   function test2 () {
     //Start a new transaction
     db.beginTransaction(function (err) {
@@ -46,9 +46,9 @@ common.createTables(db, function (err, data) {
         console.log(err);
         exitCode = 3
       }
-      
-      result = db.querySync("insert into " + common.tableName + " (COLINT, COLDATETIME, COLTEXT) VALUES (42, null, null)" );
-      
+
+      db.querySync("insert into " + common.tableName + " (COLINT, COLDATETIME, COLTEXT) VALUES (42, null, null)");
+
       //commit
       db.endTransaction(false, function (err) {
         if (err) {
@@ -56,16 +56,16 @@ common.createTables(db, function (err, data) {
           console.log(err);
           exitCode = 3
         }
-        
+
         data = db.querySync("select * from " + common.tableName);
-        
+
         assert.deepEqual(data, [ { colint: 42, coldatetime: null, coltext: null } ]);
-        
+
         finish();
       });
     });
   }
-  
+
   function finish() {
     common.dropTables(db, function (err) {
       db.closeSync();

@@ -7,7 +7,7 @@ function DirExec( conn, ErrIgn, sql )
 		var result = conn.querySync( sql );
 		console.log( sql  );
 	}
-    catch (e) 
+    catch (e)
 	{
 		console.log( "--- " + sql  );
 		if( ErrIgn != 1 )
@@ -124,11 +124,11 @@ function DoSomePrepareExec(conn)
 
 function DoSomeWork(err, conn)
 {
-    if (err) 
+    if (err)
 	{
         return console.log(err);
     }
-	
+
 	DirExec( conn, 1, "drop table t1" );
 	DirExec( conn, 0, "create table t1 ( c1 int, c2 char(20) ) " );
 	DirExec( conn, 0, "insert into t1 values( 1, 'val-1' )" );
@@ -143,8 +143,8 @@ function DoSomeWork(err, conn)
 /*
 	//var stmt = conn.prepareSync("insert into t1 (c1, c2) VALUES (?, ?)");
     //Bind and Execute the statment asynchronously
-	stmt.execute([ 6, 'BindVal-6'], 
-        function (err, result) 
+	stmt.execute([ 6, 'BindVal-6'],
+        function (err, result)
 	{
 	    result.closeSync();
 
@@ -157,7 +157,7 @@ function DoSomeWork(err, conn)
     var rows = conn.querySync( "SELECT * FROM t1" );
     console.log();
     console.log(rows);
-};
+}
 
 
 var MyAsynchronousTask = function (err, conn)
@@ -181,38 +181,38 @@ function informixdb_OpenSync(ConStr)
 	console.log();
 	console.log(" --- Executing informixdb.openSync() ...." );
 	var conn;
-	try 
+	try
 	{
 	  conn = dbobj.openSync(ConStr);
 	}
-	catch(e) 
+	catch(e)
 	{
 	  console.log(e);
 	  return;
 	}
-	
+
 	DoSomeWork(0, conn);
-	
-	try 
+
+	try
 	{
 	    //dbobj.closeSync();
 	    conn.closeSync();
 	}
-	catch(e) 
+	catch(e)
 	{
 	  console.log(e);
 	}
 	console.log(" --- End informixdb.openSync()" );
 }
 
-function main_func() 
+function main_func()
 {
     ////  Make sure the port is IDS SQLI port.
 	var ConnectionString = "SERVER=ids0;DATABASE=db1;HOST=127.0.0.1;SERVICE=9088;PROTOCOL=onsoctcp;UID=informix;PWD=xxxx;";
 
-	//Synchronous Execution 
+	//Synchronous Execution
 	informixdb_OpenSync(ConnectionString);
-	
+
 	//Asynchronous Execution
 	//informixdb_Open(ConnectionString);
 }

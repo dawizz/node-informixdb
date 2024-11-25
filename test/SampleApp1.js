@@ -41,7 +41,7 @@ function DoSomeWork(err, conn)
     var rows = conn.querySync("SELECT * FROM t1");
     console.log();
     console.log(rows);
-};
+}
 
 
 var MyAsynchronousTask = function (err, conn)
@@ -91,7 +91,7 @@ function informixdb_OpenSync(ConStr)
 
 function main_func()
 {
-    // In case of connection problem first check whether the server is 
+    // In case of connection problem first check whether the server is
     // really listening to the port on the right IP.
     // netstat -a | findstr  9088
     var ConnectionString = "SERVER=ids0;DATABASE=db1;HOST=127.0.0.1;SERVICE=9088;UID=informix;PWD=xxxxx;";

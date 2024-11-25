@@ -32,9 +32,9 @@ if (process.env.IFX_SCHEMA !== 'undefined') {
     exports.connectionObject.CURRENTSCHEMA = process.env.IFX_SCHEMA || exports.connectionObject.CURRENTSCHEMA;
 }
 
-for(key in exports.connectionObject) 
+for(let key in exports.connectionObject)
 {
-    if(exports.connectionObject[key] != undefined)
+    if(exports.connectionObject[key] !== undefined)
       exports.connectionString = exports.connectionString + key + "=" +
                                  exports.connectionObject[key] + ";" ;
 }
@@ -43,7 +43,7 @@ for(key in exports.connectionObject)
 //  exports.connectionString = process.argv[2];
 //}
 
-exports.testConnectionStrings = [{ title : "Informix", 
+exports.testConnectionStrings = [{ title : "Informix",
                         connectionString : exports.connectionString }];
 exports.benchConnectionStrings = exports.testConnectionStrings;
 
@@ -51,7 +51,7 @@ if (process.argv.length === 3) {
   //look through the testConnectionStrings to see if there is a title that matches
   //what was requested.
   var lookup = process.argv[2];
-  
+
   exports.testConnectionStrings.forEach(function (connectionString) {
     if (connectionString && connectionString.title && connectionString.title == lookup) {
       exports.connectionString = connectionString.connectionString

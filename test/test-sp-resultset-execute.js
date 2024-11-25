@@ -1,4 +1,4 @@
-// Test case to test the OUT parameters and Result set returned by 
+// Test case to test the OUT parameters and Result set returned by
 // Stored Procedure when Async and Sync forms of Prepare and Execute
 // APIs are used.
 
@@ -16,19 +16,20 @@ var query = "{call proc2(?, ?)}";
 var result;
 //informixdb.debug(true);
 informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
-    if(err) { 
+    if(err) {
       console.log(err);
       process.exit(-1);
     }
-    param2 = {ParamType:"INOUT", DataType:1, Data:"abc", Length:50};
+
+    let param2 = {ParamType:"INOUT", DataType:1, Data:"abc", Length:50};
 
 	try {
       conn.querySync("drop procedure "+ schema +".proc2;");
-    } catch (e) {};
+    } catch (e) {}
 	// Create SP with only OUT param and no resultset.
 	conn.querySync(proc2);
 	// Call SP Synchronously.
-	stmt = conn.prepareSync(query);
+	let stmt = conn.prepareSync(query);
 	result = stmt.executeSync(['1', param2]);
 	console.log("Result for Sync call of PROC2 (1 OUT param and no Result Set) ==>");
 	if(Array.isArray(result))
@@ -38,7 +39,7 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
 	  assert.deepEqual(result[1], ['success']);
 	  result = result[0];
 	}
-	data = result.fetchAllSync();
+	let data = result.fetchAllSync();
 	if(data.length) console.log(data);
 	result.closeSync();
 	stmt.closeSync();
@@ -46,7 +47,7 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
 	conn.prepare(query, function (err, stmt) {
 	  if (err) console.log(err);
 	  stmt.execute(['1', param2], function(err, result, outparams) {
-		if( err ) console.log(err);  
+		if( err ) console.log(err);
 		else {
 		  result.closeSync();
 		  console.log("Result for Async call of PROC2 (1 OUT param and no Result Set) ==>");
@@ -57,7 +58,7 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
 
 		try {
 			conn.querySync("drop procedure "+ schema +".proc2;");
-		} catch (e) {};
+		} catch (e) {}
 		// Create SP with only Result Set and no OUT or INPUT param.
 		conn.querySync(proc3);
 		// Call SP Synchronously.
@@ -84,7 +85,7 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
 		conn.prepare(query, function (err, stmt) {
 		  if (err) console.log(err);
 		  stmt.execute(['1', 'abc'], function(err, result, outparams) {
-			if( err ) console.log(err);  
+			if( err ) console.log(err);
 			else {
 			  data = result.fetchAllSync();
 			  console.log("Result for Async call of PROC3 (only 2 Result Sets) ==>");

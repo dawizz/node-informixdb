@@ -17,13 +17,13 @@ informixdb.open(cn, function (err, conn)
     try {
           conn.querySync("drop procedure " + schema + ".proc1(INT, INT, VARCHAR(20))");
     } catch(e) {}
-    
+
     conn.querySync("create procedure " + schema + ".proc1 " +
                    "(v1 INTEGER, OUT v2 INTEGER, INOUT v3 VARCHAR(20)); " +
                    "let v2 = v1 + 1; let v3 = 'verygood'; end procedure");
     console.log("created proc1...\n");
     conn.commitTransactionSync();
-    var param1 = {ParamType:"INPUT", DataType:"INTEGER", Data:3};
+    let param1 = {ParamType: "INPUT", DataType: "INTEGER", Data: 3};
     var param2 = {ParamType:"OUTPUT", DataType:"INTEGER", Data:0};
     var param3 = {ParamType:"INOUT", DataType:"CHAR", Data:"abc", Length:30};
 
@@ -41,7 +41,7 @@ informixdb.open(cn, function (err, conn)
     } catch(e) {}
 
     conn.querySync("create procedure " + schema + ".proc2 (v1 INTEGER); end procedure");
-    var param1 = {ParamType:"INPUT", DataType:"INTEGER", Data:3};
+    param1 = {ParamType: "INPUT", DataType: "INTEGER", Data: 3};
     query = "call " + schema + ".proc2(?)";
     conn.query({"sql":query, "params" : [param1]}, function(err, result){
         if(err) console.log(err);

@@ -1,15 +1,17 @@
 /* Test program to access Informix sample database  */
 /*require the informixdb module*/
-var common = require("./common")
-  , assert = require("assert")
-  , informixdb = require("../");
+const common = require("./common")
+	, assert = require("assert")
+	, informixdb = require("../");
 
-var testTable = 'BIGINTTEST';
-var testValues = [10205152031467301, 10205152031467303];
+const testTable = 'BIGINTTEST';
+
+// eslint-disable-next-line no-loss-of-precision
+const testValues = [10205152031467301, 10205152031467303];
 
 
 /*Connect to the database server
-  param 1: The DSN string which has the details of database name to connect to, user id, password, hostname, portnumber 
+  param 1: The DSN string which has the details of database name to connect to, user id, password, hostname, portnumber
   param 2: The Callback function to execute when connection attempt to the specified database is completed
 */
 informixdb.open(common.connectionString, function(err, conn)
@@ -20,10 +22,10 @@ informixdb.open(common.connectionString, function(err, conn)
         } else {
 
 		console.log('Connection to Informix machine successful');
-		
+
         try {
 		    conn.querySync("create table " + testTable + " (COLINT BIGINT)");
-        } catch (e) {};
+        } catch (e) {}
 		for(var i=0;i<testValues.length;i++) {
 			conn.querySync("insert into " + testTable + " values (" + testValues[i] + ")");
 		}
@@ -37,7 +39,7 @@ informixdb.open(common.connectionString, function(err, conn)
 			console.log("COLINT\tTESTVALUE");
 			console.log("-----------------------------------");
 
-			for (var i=0;i<nodetest.length;i++)
+			for (let i=0; i<nodetest.length; i++)
 			{
 				console.log(parseInt(nodetest[i].COLINT)+'\t'+testValues[i]);
 				if(nodetest[i].COLINT != testValues[i]) {

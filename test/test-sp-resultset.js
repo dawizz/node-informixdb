@@ -14,12 +14,14 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
       console.log(err);
       process.exit(-1);
     }
-    param2 = {ParamType:"INOUT", DataType:1, Data:"abc", Length:50};
+
+    let param2 = {ParamType:"INOUT", DataType:1, Data:"abc", Length:50};
 
 	try {
       conn.querySync("drop procedure "+ schema +".proc2;");
-    } catch (e) {};
-			
+	} catch (e) {
+	}
+
 	// Create SP with only OUT param and no resultset.
 	conn.querySync(proc2);
 	// Call SP Synchronously.
@@ -38,7 +40,8 @@ informixdb.open(common.connectionString, {fetchMode : 3}, function (err, conn) {
 
 		try {
 			conn.querySync("drop procedure "+ schema +".proc2;");
-		} catch (e) {};
+		} catch (e) {
+		}
 		// Create SP with only Result Set and no OUT or INPUT param.
 		conn.querySync(proc3);
 		// Call SP Synchronously.

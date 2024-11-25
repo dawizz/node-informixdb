@@ -20,27 +20,24 @@
 /**
  * Node-informixdb Installer file.
  */
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const exec = require('node:child_process').exec;
+const execSync = require('node:child_process').execSync;
+const url = require('node:url');
+const axios = require('axios').default;
 
-var fs = require('fs');
-var os = require('os');
-var path = require('path');
-var exec = require('child_process').exec;
-var execSync = require('child_process').execSync;
-var url = require('url');
-var request = require('request');
-var unzipper = require('unzipper');
+let platform = os.platform();
+const CURRENT_DIR = process.cwd();
+const DOWNLOAD_DIR = path.resolve(CURRENT_DIR, 'installer');
+let INSTALLER_FILE;
+let BUILD_FILE;
+let deleteInstallerFile = false;
+const arch = os.arch();
 
-var platform = os.platform();
-var CURRENT_DIR = process.cwd();
-var DOWNLOAD_DIR = path.resolve(CURRENT_DIR, 'installer');
-var INSTALLER_FILE;
-var BUILD_FILE;
-var deleteInstallerFile = false;
-var arch = os.arch();
-
-var vscode_build = false;
-var readStream;
-var writeStream;
+const vscode_build = false;
+let readStream;
 
 /*
  * "process.env.CSDK_INSTALLER_URL"
@@ -50,21 +47,23 @@ var writeStream;
  *      You can add CSDK_INSTALLER_URL in .npmrc file too.
  */
 //URL for downloading Informix ODBC/CLI driver.
-var installerURL = 'https://hcl-onedb.github.io/odbc';
-var license_agreement = '\n\n****************************************\nYou are downloading a package which includes the Node.js module for HCL/IBM Informix. The module is licensed under the Apache License 2.0. Check for additional dependencies, which may come with their own license agreement(s). Your use of the components of the package and dependencies constitutes your acceptance of their respective license agreements. If you do not accept the terms of any license agreement(s), then delete the relevant component(s) from your device.\n****************************************\n';
-installerURL = process.env.npm_config_CSDK_INSTALLER_URL ||
-               process.env.CSDK_INSTALLER_URL || installerURL;
+let installerURL = 'https://hcl-onedb.github.io/odbc';
+const license_agreement = '\n\n****************************************\nYou are downloading a package which includes the Node.js module for HCL/IBM Informix. The module is licensed under the Apache License 2.0. Check for additional dependencies, which may come with their own license agreement(s). Your use of the components of the package and dependencies constitutes your acceptance of their respective license agreements. If you do not accept the terms of any license agreement(s), then delete the relevant component(s) from your device.\n****************************************\n';
+installerURL = process.env.npm_config_CSDK_INSTALLER_URL || process.env.CSDK_INSTALLER_URL || installerURL;
 installerURL = installerURL + "/";
 
-var CSDK_HOME, CSDK_INCLUDE, CSDK_LIB;
+let CSDK_HOME, CSDK_INCLUDE, CSDK_LIB;
 
-InstallNodeInformixDB();
+InstallNodeInformixDB().catch((err) => {
+    console.error(err);
+    process.exit(1);
+});
 
 // Function to download and install node-informixdb
-function InstallNodeInformixDB() {
+async function InstallNodeInformixDB() {
     checkDriverCompatibilityForOSAndNodejsVersion();
 
-    var installerfileURL;
+    let installerfileURL;
 
     /*
      * Installer steps: Generic for all platforms :
@@ -83,8 +82,8 @@ function InstallNodeInformixDB() {
      */
 
     //If building for supporting VSCode Extn, then remove onedb-odbc-driver folder and get it freshly
-    if(vscode_build && fs.existsSync(path.join(DOWNLOAD_DIR,'onedb-odbc-driver'))){
-        deleteFolderRecursive(path.join(DOWNLOAD_DIR,'onedb-odbc-driver'))
+    if (vscode_build && fs.existsSync(path.join(DOWNLOAD_DIR, 'onedb-odbc-driver'))) {
+        deleteFolderRecursive(path.join(DOWNLOAD_DIR, 'onedb-odbc-driver'))
     }
 
     /*
@@ -98,109 +97,77 @@ function InstallNodeInformixDB() {
      * and then extract for further use.
      */
 
-    if (process.env.CSDK_HOME || process.env.INFORMIXDIR || fs.existsSync(DOWNLOAD_DIR + "/onedb-odbc-driver"))
-    {
-        var IS_ENVIRONMENT_VAR;
+    if (process.env.CSDK_HOME || process.env.INFORMIXDIR || fs.existsSync(DOWNLOAD_DIR + "/onedb-odbc-driver")) {
+        let IS_ENVIRONMENT_VAR;
         if (process.env.CSDK_HOME) {
             CSDK_HOME = process.env.CSDK_HOME;
             IS_ENVIRONMENT_VAR = true;
-            console.log('\nFOUND: CSDK_HOME environment variable : ' + CSDK_HOME +
-                '\nACTION: Build is in progress...\n');
-        }
-        else if (process.env.INFORMIXDIR) {
+            console.log('\nFOUND: CSDK_HOME environment variable : ' + CSDK_HOME + '\nACTION: Build is in progress...\n');
+        } else if (process.env.INFORMIXDIR) {
             CSDK_HOME = process.env.INFORMIXDIR;
             process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g, '\\ ');
             IS_ENVIRONMENT_VAR = true;
-            console.log('\nFOUND: INFORMIXDIR environment variable : ' + CSDK_HOME +
-                '\nACTION: Build is in progress...\n');
-        }
-        else if (fs.existsSync(DOWNLOAD_DIR + "/onedb-odbc-driver")){
+            console.log('\nFOUND: INFORMIXDIR environment variable : ' + CSDK_HOME + '\nACTION: Build is in progress...\n');
+        } else if (fs.existsSync(DOWNLOAD_DIR + "/onedb-odbc-driver")) {
             CSDK_HOME = path.resolve(DOWNLOAD_DIR, 'onedb-odbc-driver');
-            process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g,'\\ ');
+            process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g, '\\ ');
             IS_ENVIRONMENT_VAR = false;
         }
 
         checkCSDKInternalDirs();
 
         if (IS_ENVIRONMENT_VAR) {
-            console.log('CSDK_HOME environment variable have already been ' +
-                'set to -> ' + CSDK_HOME + '\n\nDownloading of onedb-odbc-driver skipped - build is in progress...\n');
+            console.log('CSDK_HOME environment variable have already been ' + 'set to -> ' + CSDK_HOME + '\n\nDownloading of onedb-odbc-driver skipped - build is in progress...\n');
         } else {
-            console.log('Rebuild Process: Found onedb-odbc-driver at -> '+ CSDK_HOME +
-                '\n\nDownloading of onedb-odbc-driver skipped - build is in progress...\n');
+            console.log('Rebuild Process: Found onedb-odbc-driver at -> ' + CSDK_HOME + '\n\nDownloading of onedb-odbc-driver skipped - build is in progress...\n');
         }
 
-        if (platform != 'win32') {
-            if (!fs.existsSync(CSDK_HOME + "/lib"))
-                fs.symlinkSync(CSDK_LIB, path.resolve(CSDK_HOME, 'lib'));
+        if (platform !== 'win32') {
+            if (!fs.existsSync(CSDK_HOME + "/lib")) fs.symlinkSync(CSDK_LIB, path.resolve(CSDK_HOME, 'lib'));
 
-            if ((platform == 'linux') || (platform == 'aix') ||
-                (platform == 'darwin' && arch == 'x64')) {
+            if ((platform === 'linux') || (platform === 'aix') || (platform === 'darwin' && arch === 'x64')) {
                 buildDriverAndGenerateBinary(!IS_ENVIRONMENT_VAR);
             }
-        }
-        else if (platform == 'win32' && arch == 'x64') {
+        } else if (platform === 'win32' && arch === 'x64') {
             buildDriverAndGenerateBinary(!IS_ENVIRONMENT_VAR);
+        } else {
+            console.log('\nBuilding binaries for node-informixdb. This platform ' + 'is not completely supported, you might encounter errors. ' + 'In such cases please open an issue on our repository, ' + 'https://github.com/OpenInformix/node-informixdb. \n');
         }
-        else {
-            console.log('\nBuilding binaries for node-informixdb. This platform ' +
-                'is not completely supported, you might encounter errors. ' +
-                'In such cases please open an issue on our repository, ' +
-                'https://github.com/OpenInformix/node-informixdb. \n');
-        }
-    }
-    else {
-        if(platform == 'win32') {
-            if(arch == 'x64') {
+    } else {
+        if (platform === 'win32') {
+            if (arch === 'x64') {
                 installerfileURL = installerURL + 'OneDB-Win64-ODBC-Driver.zip';
             }
-        }
-        else if(platform == 'linux')
-        {
-            if(arch == 'x64') {
+        } else if (platform === 'linux') {
+            if (arch === 'x64') {
                 installerfileURL = installerURL + 'OneDB-Linux64-ODBC-Driver.tar.gz';
             } else {
-                console.log('Node-Informixdb does not support other Linux flavours. Exiting the ' +
-                        'install process.\n');
+                console.log('Node-Informixdb does not support other Linux flavours. Exiting the ' + 'install process.\n');
                 process.exit(1);
             }
-        }
-        else if(platform == 'darwin')
-        {
-            console.log('Node-Informixdb does not support MAC OS. Exiting the ' +
-                        'install process.\n');
+        } else if (platform === 'darwin') {
+            console.log('Node-Informixdb does not support MAC OS. Exiting the ' + 'install process.\n');
             process.exit(1);
-        }
-        else if(platform == 'aix')
-        {
-            console.log('Node-Informixdb does not support AIX OS. Exiting the ' +
-                        'install process.\n');
+        } else if (platform === 'aix') {
+            console.log('Node-Informixdb does not support AIX OS. Exiting the ' + 'install process.\n');
             process.exit(1);
-        }
-        else if(platform == 'os390')
-        {
-            console.log('Node-Informixdb does not support OS390. Exiting the ' +
-                        'install process.\n');
+        } else if (platform === 'os390') {
+            console.log('Node-Informixdb does not support OS390. Exiting the ' + 'install process.\n');
             process.exit(1);
-        }
-        else
-        {
-            console.log('Node-Informixdb does not support this OS platform. Exiting the ' +
-                        'install process.\n');
+        } else {
+            console.log('Node-Informixdb does not support this OS platform. Exiting the ' + 'install process.\n');
             process.exit(1);
         }
 
-        if(!installerfileURL) {
-            console.log('Unable to fetch driver download file. Exiting the ' +
-                        'install process.\n');
+        if (!installerfileURL) {
+            console.log('Unable to fetch driver download file. Exiting the ' + 'install process.\n');
             process.exit(1);
         }
 
-        var file_name = url.parse(installerfileURL).pathname.split('/').pop();
+        const file_name = new URL(installerfileURL).pathname.split('/').pop();
         INSTALLER_FILE = path.resolve(DOWNLOAD_DIR, file_name);
 
-        console.log('Downloading Informix ODBC CLI Driver from ' +
-                    installerfileURL+'...\n');
+        console.log('Downloading Informix ODBC CLI Driver from ' + installerfileURL + '...\n');
 
         fs.stat(installerfileURL, function (err, stats) {
             if (!err && stats.isFile()) {
@@ -210,49 +177,44 @@ function InstallNodeInformixDB() {
             return downloadODBCDriver(installerfileURL);
         });
     }  // * END OF EXECUTION */
-}; //InstallNodeInformixDB
+} //InstallNodeInformixDB
 
 function checkDriverCompatibilityForOSAndNodejsVersion() {
     console.log("\nPlatform = ", platform, ", Arch = ", arch, ", Node.js version = ", process.version);
-    if ((platform == 'win32' && arch == 'x64') || platform == 'linux') {
+    if ((platform === 'win32' && arch === 'x64') || platform === 'linux') {
         // Add-on binaries for node.js version less than 10.0 has been discontinued.
         if (Number(process.version.match(/^v(\d+\.\d+)/)[1]) < 10.0) {
-            console.log('\nERROR: node-informixdb does not provide compilation and precompiled add-on binary support for node.js version < 10.X on Windows & Linux platforms.' +
-                ' Please use the node.js version >= 10.X\n');
+            console.log('\nERROR: node-informixdb does not provide compilation and precompiled add-on binary support for node.js version < 10.X on Windows & Linux platforms.' + ' Please use the node.js version >= 10.X\n');
             process.exit(1);
         }
-    }
-    else {
+    } else {
         console.log('\nERROR: Platform: ' + platform + ' with arch: ' + arch + ' is not supported. Please use a supported OS platform.\n');
         process.exit(1);
     }
-};
+}
 
 function checkCSDKInternalDirs() {
     CSDK_INCLUDE = path.resolve(CSDK_HOME, 'incl/cli');
     CSDK_LIB = path.resolve(CSDK_HOME, 'lib');
 
     if (!fs.existsSync(CSDK_HOME)) {
-        console.log('\nERROR:' + CSDK_HOME + ' directory does not exist. Please check if you have ' +
-            'set the CSDK_HOME environment variable\'s value correctly.\n');
+        console.log('\nERROR:' + CSDK_HOME + ' directory does not exist. Please check if you have ' + 'set the CSDK_HOME environment variable\'s value correctly.\n');
         process.exit(1);
     }
     if (!fs.existsSync(CSDK_INCLUDE)) {
-        console.log('\nERROR:' + CSDK_INCLUDE + ' directory does not exist. Please check if you have ' +
-            'set the CSDK_HOME environment variable\'s value correctly.\n');
+        console.log('\nERROR:' + CSDK_INCLUDE + ' directory does not exist. Please check if you have ' + 'set the CSDK_HOME environment variable\'s value correctly.\n');
         process.exit(1);
     }
     if (!fs.existsSync(CSDK_LIB)) {
-        console.log('\nERROR:' + CSDK_LIB + ' directory does not exist. Please check if you have ' +
-            'set the CSDK_HOME environment variable\'s value correctly.\n');
+        console.log('\nERROR:' + CSDK_LIB + ' directory does not exist. Please check if you have ' + 'set the CSDK_HOME environment variable\'s value correctly.\n');
         process.exit(1);
     }
-};
+}
 
 function buildDriverAndGenerateBinary(isDownloaded) {
-    var buildString = "node-gyp configure build ";
+    let buildString = "node-gyp configure build ";
 
-    if(isDownloaded) {
+    if (isDownloaded) {
         buildString = buildString + " --IS_DOWNLOADED=true";
     } else {
         buildString = buildString + " --IS_DOWNLOADED=false";
@@ -262,242 +224,148 @@ function buildDriverAndGenerateBinary(isDownloaded) {
     removeDir('build');
 
     // Windows : Auto Installation Process -> 1) node-gyp
-    if (platform == 'win32' && arch == 'x64') {
-        var buildString = buildString + " --CSDK_HOME=\$CSDK_HOME";
+    if (platform === 'win32' && arch === 'x64') {
+        buildString = buildString + " --CSDK_HOME=$CSDK_HOME";
 
-        var childProcess = exec(buildString, function (error, stdout, stderr) {
+        exec(buildString, function (error, stdout) {
             console.log(stdout);
 
             if (error !== null) {
                 console.log('\nERROR: node-gyp build process failed! \n' + error);
-                installPreCompiledBinary();
-                return;
+                process.exit(1);
+
             } else {
-                console.log("\n" +
-                "=======================================\n" +
-                "node-informixdb installed successfully!\n" +
-                "=======================================\n");
+                console.log("\n" + "=======================================\n" + "node-informixdb installed successfully!\n" + "=======================================\n");
             }
         });
-    }
-    else {
-        var buildString = buildString + " --CSDK_HOME=\"$CSDK_HOME\"";
-        var childProcess = exec(buildString, function (error, stdout, stderr) {
+    } else {
+        buildString = buildString + " --CSDK_HOME=\"$CSDK_HOME\"";
+        exec(buildString, function (error, stdout) {
             console.log(stdout);
             if (error !== null) {
                 console.log('\nERROR: node-gyp build process failed! \n' + error);
-                installPreCompiledBinary();
-                return;
+                process.exit(1);
+
             } else {
-                console.log("\n" +
-                "=======================================\n" +
-                "node-informixdb installed successfully!\n" +
-                "=======================================\n");
+                console.log("\n" + "=======================================\n" + "node-informixdb installed successfully!\n" + "=======================================\n");
             }
         });
     }
-}; //buildDriverAndGenerateBinary
+} //buildDriverAndGenerateBinary
 
-function installPreCompiledBinary() {
-    console.log('\nACTION: Proceeding with Pre-compiled Binary Installation. \n');
-    if (!process.env.CSDK_HOME && !process.env.INFORMIXDIR && !fs.existsSync(DOWNLOAD_DIR + "/onedb-odbc-driver"))
-    {
-        console.log('\nNo prior CSDK/ODBC installation/directory found. Please check if you have ' +
-                'set the CSDK_HOME/INFORMIXDIR environment variable\'s value correctly.\n');
-        console.log('\nERROR: Installation Failed! \n');
-        process.exit(1);
-    }
-    var fstream = require('fstream');
-    // build.zip file contains all the pre-compiled binary files
-    BUILD_FILE = path.resolve(CURRENT_DIR, 'build.zip');
+// Function to download onedb-odbc-driver file using axios module.
+async function downloadODBCDriver(installerFileURL) {
+    const outStream = fs.createWriteStream(INSTALLER_FILE);
 
-    // This will always be the final installation name/path for all the binaries
-    var ODBC_BINDINGS = 'build\/Release\/odbc_bindings.node';
+    const response = await axios({
+        method: 'get',
+        url: installerFileURL,
+        responseType: 'stream',
+    });
 
-    // Supported Node.js versions bonaries
-    var ODBC_BINDINGS_V10, ODBC_BINDINGS_V11, ODBC_BINDINGS_V12, ODBC_BINDINGS_V13, ODBC_BINDINGS_V14
+    const totalBytes = parseInt(response.headers['content-length'], 10);
+    let receivedBytes = 0;
 
-    if (platform == 'win32' && arch == 'x64') {
-        // Windows node binary names should update here.
-        ODBC_BINDINGS_V10 = 'build\/Release\/odbc_bindings_win64.node.10.24.1';
-        ODBC_BINDINGS_V11 = 'build\/Release\/odbc_bindings_win64.node.11.15.0';
-        ODBC_BINDINGS_V12 = 'build\/Release\/odbc_bindings_win64.node.12.22.5';
-        ODBC_BINDINGS_V13 = 'build\/Release\/odbc_bindings_win64.node.13.14.0';
-        ODBC_BINDINGS_V14 = 'build\/Release\/odbc_bindings_win64.node.14.17.5';
-    }
-    else if (platform = 'linux') {
-        // Linux node binary names should update here.
-        ODBC_BINDINGS_V10 = 'build\/Release\/odbc_bindings_linux.node.10.24.1';
-        ODBC_BINDINGS_V11 = 'build\/Release\/odbc_bindings_linux.node.11.15.0';
-        ODBC_BINDINGS_V12 = 'build\/Release\/odbc_bindings_linux.node.12.22.5';
-        ODBC_BINDINGS_V13 = 'build\/Release\/odbc_bindings_linux.node.13.14.0';
-        ODBC_BINDINGS_V14 = 'build\/Release\/odbc_bindings_linux.node.14.17.5';
-    }
+    // Listen to the data event to track download progress
+    response.data.on('data', (chunk) => {
+        receivedBytes += chunk.length;
+        showDownloadingProgress(receivedBytes, totalBytes);
+    });
 
-    /*
-    * odbcBindingsNode will consist of the node binary-
-    * file name according to the node version in the system.
-    */
-    var odbcBindingsNode = (Number(process.version.match(/^v(\d+\.\d+)/)[1]) < 11.0) && ODBC_BINDINGS_V10 ||
-                           (Number(process.version.match(/^v(\d+\.\d+)/)[1]) < 12.0) && ODBC_BINDINGS_V11 ||
-                           (Number(process.version.match(/^v(\d+\.\d+)/)[1]) < 13.0) && ODBC_BINDINGS_V12 ||
-                           (Number(process.version.match(/^v(\d+\.\d+)/)[1]) < 14.0) && ODBC_BINDINGS_V13 || ODBC_BINDINGS_V14;
+    // Pipe the response data to the file
+    response.data.pipe(outStream);
 
-    // Removing the "build" directory created by Auto Installation Process.
-    // "unzipper" will create a fresh "build" directory for extraction of "build.zip".
-    removeDir('build');
-
-    readStream = fs.createReadStream(BUILD_FILE);
-
-    /*
-    * unzipper will parse the build.zip file content and
-    * then it will check for the odbcBindingsNode
-    * (node Binary), when it gets that binary file,
-    * fstream.Writer will write the same node binary
-    * but the name will be odbc_bindings.node, and the other
-    * binary files and build.zip will be discarded.
-    */
-    readStream.pipe(unzipper.Parse())
-        .on('entry', function (entry) {
-            if (entry.path === odbcBindingsNode) {
-                entry.pipe(fstream.Writer(ODBC_BINDINGS));
-            } else {
-                entry.autodrain();
-            }
-        })
-        .on('error', function (e) {
-            console.log('\nERROR: Installation Failed! \n', e);
-            process.exit(1);
-        })
-        .on('finish', function () {
-            console.log("\n" +
-            "=======================================\n" +
-            "node-informixdb installed successfully!\n" +
-            "=======================================\n");
-        });
-    return 1;
-};
-
-// Function to download onedb-odbc-driver file using request module.
-function downloadODBCDriver(installerfileURL) {
-    // Variable to save downloading progress
-    var received_bytes = 0;
-    var total_bytes = 0;
-
-    var outStream = fs.createWriteStream(INSTALLER_FILE);
-
-    request
-        .get(installerfileURL)
-            .on('error', function(err) {
-                console.log('\nERROR: downloading onedb-odbc-driver process failed! \n' + err);
-                installPreCompiledBinary();
-                return;
-            })
-            .on('response', function(data) {
-                total_bytes = parseInt(data.headers['content-length']);
-            })
-            .on('data', function(chunk) {
-                received_bytes += chunk.length;
-                showDownloadingProgress(received_bytes, total_bytes);
-            })
-            .pipe(outStream);
+    // Wait for the stream to finish
+    await new Promise((resolve, reject) => {
+        outStream.on('finish', resolve);
+        outStream.on('error', reject);
+    });
 
     deleteInstallerFile = true;
     outStream.once('close', copyAndExtractODBCDriver)
-    .once('error', function (err) {
-        console.log('\nERROR: extraction of onedb-odbc-driver failed! \n' + err);
-        installPreCompiledBinary();
-        return;
-    });
-};
+        .once('error', function (err) {
+            console.log('\nERROR: extraction of onedb-odbc-driver failed! \n' + err);
+            process.exit(1);
+        });
+}
 
 function showDownloadingProgress(received, total) {
-    var percentage = ((received * 100) / total).toFixed(2);
-    process.stdout.write((platform == 'win32') ? "\033[0G": "\r");
+    const percentage = ((received * 100) / total).toFixed(2);
+    process.stdout.write((platform === 'win32') ? "\033[0G" : "\r");
     process.stdout.write(percentage + "% | " + received + " bytes downloaded out of " + total + " bytes.");
-};
+}
 
 function copyAndExtractODBCDriver() {
-    if(platform == 'win32') {
+    if (platform === 'win32') {
         readStream = fs.createReadStream(INSTALLER_FILE);
         // Using the "unzipper" module to extract the zipped "onedb-odbc-driver",
         // and on successful close, printing the license_agreement
-        var extractODBCDriver = readStream.pipe(unzipper.Extract({path: DOWNLOAD_DIR}));
+        const unzipper = require('unzipper');
+        const extractODBCDriver = readStream.pipe(unzipper.Extract({path: DOWNLOAD_DIR}));
 
-        extractODBCDriver.on('close', function() {
+        extractODBCDriver.on('close', function () {
             console.log(license_agreement);
-            console.log('Downloading and extraction of Informix ODBC ' +
-                'CLI Driver completed successfully... \n');
+            console.log('Downloading and extraction of Informix ODBC ' + 'CLI Driver completed successfully... \n');
             CSDK_HOME = path.resolve(DOWNLOAD_DIR, 'onedb-odbc-driver');
-            process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g,'\\ ');
+            process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g, '\\ ');
             checkCSDKInternalDirs();
             buildDriverAndGenerateBinary(true);
             removeFile(BUILD_FILE);
-            if(deleteInstallerFile) removeFile(INSTALLER_FILE);
+            if (deleteInstallerFile) removeFile(INSTALLER_FILE);
         });
-        extractODBCDriver.on('err', function() {
+        extractODBCDriver.on('err', function (err) {
             console.log('\nERROR: extraction of onedb-odbc-driver failed! \n' + err);
-            installPreCompiledBinary();
-            return;
+            process.exit(1);
         });
-    }
-    else
-    {
-        var targz = require('targz');
-        var decompress = targz.decompress({src: INSTALLER_FILE, dest: DOWNLOAD_DIR}, function(err){
-            if(err) {
+    } else {
+        const targz = require('targz');
+        targz.decompress({src: INSTALLER_FILE, dest: DOWNLOAD_DIR}, function (err) {
+            if (err) {
                 console.log('\nERROR: extraction of onedb-odbc-driver failed! \n' + err);
-                installPreCompiledBinary();
-                return;
-            }
-            else {
+                process.exit(1);
+            } else {
                 console.log(license_agreement);
-                console.log('Downloading and extraction of Informix ODBC ' +
-                    'CLI Driver completed successfully... \n');
+                console.log('Downloading and extraction of Informix ODBC ' + 'CLI Driver completed successfully... \n');
                 CSDK_HOME = path.resolve(DOWNLOAD_DIR, 'onedb-odbc-driver');
-                process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g,'\\ ');
+                process.env.CSDK_HOME = CSDK_HOME.replace(/\s/g, '\\ ');
                 checkCSDKInternalDirs();
                 buildDriverAndGenerateBinary(true);
                 removeFile(BUILD_FILE);
-                if(deleteInstallerFile) removeFile(INSTALLER_FILE);
+                if (deleteInstallerFile) removeFile(INSTALLER_FILE);
             }
         });
     }
-};
+}
 
 function removeDir(dir) {
-    var fullPath = path.resolve(CURRENT_DIR, dir);
+    const fullPath = path.resolve(CURRENT_DIR, dir);
     if (fs.existsSync(fullPath)) {
-        if (platform == 'win32') {
+        if (platform === 'win32') {
             execSync("rmdir /s /q " + '"' + fullPath + '"');
         } else {
             execSync("rm -rf " + '"' + fullPath + '"');
         }
     }
-};
+}
 
-function removeFile(FILE_PATH)
-{
+function removeFile(FILE_PATH) {
     // Delete downloaded odbc_cli.tar.gz file.
-    fs.exists(FILE_PATH, function(exists)
-    {
-        if (exists)
-        {
-            fs.unlinkSync(FILE_PATH);
-        }
-    });
-};
+    const exists = fs.existsSync(FILE_PATH)
+    if (exists) {
+        fs.unlinkSync(FILE_PATH);
+    }
+}
 
-function deleteFolderRecursive(p){
+function deleteFolderRecursive(p) {
     if (fs.existsSync(p)) {
-        fs.readdirSync(p).forEach(function(file, index){
-            var curPath = path.join(p, file);
+        fs.readdirSync(p).forEach(function (file) {
+            const curPath = path.join(p, file);
             if (fs.lstatSync(curPath).isDirectory()) { // recurse
                 deleteFolderRecursive(curPath);
-            }else { // delete file
+            } else { // delete file
                 fs.unlinkSync(curPath);
             }
         });
         fs.rmdirSync(p);
     }
-};
+}

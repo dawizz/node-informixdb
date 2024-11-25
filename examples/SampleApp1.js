@@ -41,7 +41,7 @@ function DoSomeWork(err, conn)
     var rows = conn.querySync("SELECT * FROM t1");
     console.log();
     console.log(rows);
-};
+}
 
 
 var MyAsynchronousTask = function (err, conn)

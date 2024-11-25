@@ -4,20 +4,20 @@ var common = require("./common")
     , fs = require('fs')
     , cn = common.connectionString;
 
-informixdb.open(cn, function (err,conn) 
+informixdb.open(cn, function (err,conn)
 {
-  if (err) 
+  if (err)
   {
     console.log(err);
     process.exit(-1);
   }
   try {
       conn.querySync("drop table mytab");
-  } catch (e) {};
+  } catch (e) {}
   try {
     conn.querySync("create table mytab (empId int, photo BYTE, desc TEXT)");
-    } catch (e) {};
-  
+    } catch (e) {}
+
   var fimg1= 'data/phool.jpg';
   var ftext= 'data/desc.txt';
 
@@ -25,52 +25,55 @@ informixdb.open(cn, function (err,conn)
   var text= fs.readFileSync(ftext,'ascii');
   var len1  = fs.statSync(fimg1)["size"];
   var len2  = fs.statSync(ftext)["size"];
- 
-  conn.prepare("insert into mytab(empId, photo, desc) VALUES (?, ?, ?)", 
-      function (err, stmt) 
+
+  conn.prepare("insert into mytab(empId, photo, desc) VALUES (?, ?, ?)",
+      function (err, stmt)
    {
-    if (err) 
+    if (err)
     {
       console.log(err);
       return conn.closeSync();
     }
     var photo = {DataType: "BYTE", Data:img1};
     var desc = {DataType: "TEXT", Data: text};
-	stmt.execute([18, photo, desc], function (err, result) 
+	stmt.execute([18, photo, desc], function (err, result)
 	{
-      if( err ) console.log(err);  
+      if( err ) console.log(err);
       else result.closeSync();
-	  
+
 	  conn.prepare("select * from mytab", function (err, stmt)
       {
-        if(err) 
+        if(err)
         {
           console.log(err);
           return conn.closeSync();
         }
 
         stmt.execute([], function(err, result) {
-          if(err) console.log(err);
-          else 
-          {
+          let data;
+          if (err) console.log(err);
+          else {
             data = result.fetchAllSync();
             fs.writeFileSync('phool2.jpg', data[0].photo, 'binary');
             fs.writeFileSync('desc2.txt', data[0].desc, 'ascii');
-			
-			result.closeSync();
+
+            result.closeSync();
             try {
-                conn.querySync("drop table mytab");
-            } catch (e) {};
-            
-            var size1 = fs.statSync("phool2.jpg")["size"];
-            var size2 = fs.statSync("desc2.txt")["size"];
-            console.log("Lengths before  = " + len1+ ", " + len2);
-            console.log("Lengths  after  = " + size1+ ", " + size2);
+              conn.querySync("drop table mytab");
+            } catch (e) {
+            }
+
+            const size1 = fs.statSync("phool2.jpg")["size"];
+            const size2 = fs.statSync("desc2.txt")["size"];
+            console.log("Lengths before  = " + len1 + ", " + len2);
+            console.log("Lengths  after  = " + size1 + ", " + size2);
             assert(len1, size1);
             assert(len2, size2);
 
             fs.unlinkSync("phool2.jpg");
-            fs.unlink("desc2.txt", function () { console.log('done'); });
+            fs.unlink("desc2.txt", function () {
+              console.log('done');
+            });
           }
         });
       });
