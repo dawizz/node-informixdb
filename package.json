@@ -1,5 +1,5 @@
 {
-  "name": "informixdb",
+  "name": "@dawizz/informixdb",
   "description": "Informix native node.js driver",
   "version": "3.0.0",
   "main": "lib/odbc.js",
